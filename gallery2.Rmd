@@ -1,0 +1,720 @@
+# 双变量图 {#cha:gallery2}
+
+> 　　“他的职位独一无二，是他自创的，以前没有过，以后也不会有。他头脑清晰，极富条理，储存信息的能力超强，世上无人能及。我们拥有一样杰出的才能，我用来探案，他则用到这份特殊工作上。每个部门的文件都会送到他手上，他就像中心交易点，或者说票据交换所，起到清算账目的作用。其他人都是专家，只有他是全才。假如某位大臣需要了解某个信息，同时涉及海军、印度、加拿大和金银复本位制问题，虽然可以从不同部门分别获取相关意见，但只有麦考夫一人集中了所有信息，立刻就能将一个因素和另一个因素联系起来。最初他只是他们走捷径、图方便的工具，现在俨然成了必需品。他那颗超强大脑分类储存了各种信息，随时可以输出。”
+>
+> ——柯南 $\cdot$ 道尔《布鲁斯-帕廷顿设计图》
+
+本章介绍反映两个变量之间关系的统计图形，即双变量图。
+
+双变量图以我们熟悉的 X-Y 散点图为代表，此外还有一些基于普通散点图的变种。如果两个变量中的一个是分类变量，我们常常使用的是条形图、箱线图、点图等类型，在第\@ref(cha:gallery1)章已有介绍，此处不再赘述。而等高图需要基于散点图计算而得到二维核密度矩阵，因此在第\@ref(cha:gallerymatrix)章介绍。
+
+## 散点图 {#sec:plot-default}
+
+### 概述 {-}
+
+散点图通常用来展示两个变量之间的关系，这种关系可能是线性或非线性的。图中每一个点的横纵坐标都分别对应两个变量各自的观测值。因此，散点所反映出来的趋势也就是两个变量之间的关系。
+
+### 示例 {-}
+
+我们设计了 2 万个样本，其中有 1 万个样本点来自于两个独立的标准正态分布，另 1 万个样本点的坐标落在半径为 0.5 的圆上，最后将这 2 万个样本拼起来并打乱顺序（表 \@ref(tab:tab-BinormCircle)）。图 \@ref(fig:scatter-alpha)
+展示了这组人造数据的散点图。
+
+```{r tab-BinormCircle}
+data(BinormCircle, package = "MSG")
+kable2(BinormCircle, "一组人造的散点图数据")
+```
+
+该数据收录在 R 语言的 **MSG** 包中，名为`BinormCircle`。虽然数据只有两个变量，但我们用普通的统计模型和数值分析几乎无法找出数据的特征，例如，我们在 R 里运行下面的代码来加载数据，并计算线性回归系数和 P 值：
+
+```{r BinormCircle-lm, echo=TRUE}
+data(BinormCircle, package = "MSG")
+# 回归系数以及 P 值（不显著）
+coef(summary(lm(V2 ~ V1, BinormCircle)))
+```
+
+\noindent 结果显示两个变量 `V1` 和 `V2` 的回归系数非常不显著。换用高阶回归的结果也类似：无论回归阶数为多少，系数均不显著，这一点从数据的构造上就可以知道（理论上两个变量的相关系数为 0）。
+
+图 \@ref(fig:scatter-alpha) 左图给出了这两个变量之间的散点图。由于样本量太大，普通的散点图上点与点之间严重重叠，所以也很难看出散点图有何异常。右图则使用了半透明色，很容易看出，在大量的数据点中，还隐藏着一个圆圈，说明有相当一部分数据分布有特殊规律。
+
+(ref:fig-scatter-alpha-s) 半透明散点图中的规律
+
+(ref:fig-scatter-alpha) 半透明散点图中的规律：左图是一幅普通的散点图，图中几乎看不出数据有任何异常特征；右图中对点使用了透明度为 0.01 的红色，图中立即显示出一个深色的圆圈，表明该圆圈上集中了大量数据点
+
+```{r scatter-alpha, fig.width=4,fig.height=2, dev='png', dev.args=list(type = "cairo"), fig.cap="(ref:fig-scatter-alpha)", fig.scap="(ref:fig-scatter-alpha-s)",results='hide', fig.show="hold"}
+msg_graph("scatter-alpha2")
+```
+
+我们在网页[^binorm]上给出了其它五种不同的解决方案，都可以从图形的角度反映出这种规律。本章 \@ref(sec:smoothScatter) 小节也将以平滑散点图的方式回顾这批数据。
+
+[^binorm]: <https://yihui.org/en/2008/09/to-see-a-circle-in-a-pile-of-sand/>
+
+### 绘制方法 {-}
+
+R 中散点图的基础绘图函数为 `plot.default()`，但是很少用。由于 `plot()` 是泛型函数（参见 \@ref(sec:plot) 小节），通常我们只需要提供两个数值型向量给 `plot()` 即可画散点图，或者提供一个两列的矩阵或数据框。
+
+函数 `plot.default()` 的用法如下：
+
+```{r plot-default-usage, results='asis'}
+usage2(usage(plot.default, output = FALSE))
+```
+
+\noindent 参数含义：若 `x` 是一个两列的矩阵或数据框，则无需再提供 `y` ，否则 `x` 和 `y` 都必须是数值型向量；其它参数在 \@ref(sec:plot) 小节中介绍（例如设置 `type = "o"` 就会得到折线图）。
+
+使用基础函数绘制图 \@ref(fig:scatter-alpha) 的代码如下[^demo-scatter-alpha]：
+
+[^demo-scatter-alpha]: 可以运行 `demo("alphaDemo", package = "MSG")`获取。
+
+```{r, results='asis'}
+msg_code("scatter-alpha")
+```
+
+**ggplot2** 包中绘制散点图的函数是 `geom_point()`。下面是绘制图 \@ref(fig:scatter-alpha) 的代码：
+
+```{r, results='asis'}
+msg_code("scatter-alpha2")
+```
+
+## 一元函数曲线图 {#sec:curve}
+
+### 概述 {-}
+
+一元函数曲线图指的是给定函数关系 $y=f(x)$ 的曲线图。这可以通过给 $x$ 赋值后计算 $y$ 值，接着绘制散点图得到。
+
+### 示例 {-}
+
+图 \@ref(fig:curve) 给出了函数 $f(x)=\sin(\cos(x) \cdot \exp(-x/2))$ 的曲线以及均匀分布 $U(-1,1)$ 的特征函数曲线作为示例，其中特征函数为概率论中定义的 $\varphi_{X}(t) = \mathrm{E}[\exp(itX)]$。
+
+(ref:fig-curve-s) 函数 $f(x)=\mathrm{sin}(\mathrm{cos}(x) \cdot \mathrm{exp}(-x/2))$ 的曲线图和均匀分布 $U(-1,1)$ 的特征函数图
+
+(ref:fig-curve) 函数 $f(x)=\mathrm{sin}(\mathrm{cos}(x) \cdot \mathrm{exp}(-x/2))$ 的曲线图（上）和均匀分布 $U(-1,1)$ 的特征函数图（下）
+
+```{r curve,fig.width=4.8,fig.height=3.6,fig.cap="(ref:fig-curve)",fig.scap="(ref:fig-curve-s)",dev='tikz',fig.process=to_png,fig.showtext=FALSE,small.mar=FALSE}
+msg_graph("curve-tikz")
+```
+
+### 绘制方法 {-}
+
+R 专门提供了一个函数 `curve()`，可以方便地对任何一元函数作出它在某段定义域上的曲线。我们当然可以用 `plot()` 函数绘制散点图来得到这条曲线，而使用 `curve()` 则可以节省我们去使用低层作图函数（如 `lines()`）的精力和时间。
+
+`curve()`函数用法如下：
+
+```{r curve-usage, results='asis'}
+usage2(usage(curve, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`expr`:
+: 一个一元函数或者该函数的名称。
+
+`from` 和 `to`:
+: 分别定义了曲线的起点和终点。
+
+`n`:
+: 决定将定义域分成多少个小区间，以便计算函数值并连接曲线， `n` 值越大曲线越光滑。
+
+`add`:
+: 决定是否将曲线添加到现有图形上。
+
+`type`:
+: 决定了作图类型（参见 \@ref(sec:plot) 小节和图 \@ref(fig:plot-type)）。
+
+注意：若对一个函数直接应用 `plot()` 函数，那么泛型函数 `plot()` 会自动调用 `curve()` 完成作图。
+
+利用该函数绘制图 \@ref(fig:curve) 的代码是：
+
+```{r, results='asis'}
+msg_code("curve")
+```
+
+**ggplot2**包里并没有现成的函数绘制一元函数曲线图。一个变通的方法就是设定一系列 $x$ 值，根据函数关系计算出 $y$ 值，然后绘制折线图即可。绘制代码如下：
+
+```{r, results='asis'}
+msg_code("curve2")
+```
+
+由于这种曲线图与数据分析关系不甚密切，我们在此只是粗略介绍一下。
+
+## 向日葵散点图 {#sec:sunflowerplot}
+
+### 概述 {-}
+
+向日葵散点图（Sunflower Scatter Plot）是用来克服一般散点图中数据点重叠问题的特殊散点图工具。它采用的办法是在有重叠的地方用一朵"向日葵花"的花瓣数目来表示重叠数据的个数，这样我们就很容易看出来散点图中哪些地方的数据有重叠，而且能知道重叠的具体数目。
+
+向日葵散点图在数据特别密集或者数据类型为分类数据时很有用，因为这两种情况下都容易产生重复的数据点，尤其是后一种情况下，数据几乎必然有重复（除非列联表单元格频数为 1）。
+
+### 示例 {-}
+
+鸢尾花花瓣数据（表 \@ref(tab:tab-iris)）常用来做统计图形的演示。我们将这组数据绘制了鸢尾花花瓣长和宽的向日葵散点图，
+如图 \@ref(fig:sunflowerplot) 所示。注意左下方和中部都有一些重复数据，通过花瓣数目的多少来体现。
+
+
+```{r tab-iris}
+data(iris)
+kable2(iris, "鸢尾花花瓣数据")
+```
+
+图 \@ref(fig:sunflowerplot)  为鸢尾花花瓣长和宽的向日葵散点图，注意左下方和中部都有一些重复数据，
+
+(ref:fig-sunflowerplot-s) 鸢尾花花瓣长和宽的向日葵散点图
+
+(ref:fig-sunflowerplot) 鸢尾花花瓣长和宽的向日葵散点图
+
+```{r sunflowerplot,fig.width=4,fig.height=4,out.width="70%", fig.cap="(ref:fig-sunflowerplot)",fig.scap="(ref:fig-sunflowerplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("sunflowerplot")
+```
+
+### 绘制方法 {-}
+
+R 中向日葵散点图的基础绘图函数为 `sunflowerplot()` ，其用法如下：
+
+```{r sunflowerplot-usage, results='asis'}
+usage2(usage(graphics:::sunflowerplot.default, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x` 和 `y`:
+: 分别为散点图的两个变量。
+
+`number`:
+: 人工给定的数据频数，即图中的花瓣数目。若不指定这个参数的话， R 会自动从 `x` 和 `y` 计算。
+
+`digits`:
+: 给定数值的有效数字位数。在计算重复数据之前，原始数据会按照 `digits` 四舍五入。
+
+`add`:
+: 决定是否将向日葵散点图添加到当前图形上。
+
+`rotate`:
+: 决定是否随机旋转向日葵的角度。
+
+`pch`:
+: 给定散点图的点的类型。
+
+`cex`:
+: 给定散点图的点的缩放倍数。
+
+`cex.fact`:
+: 给定向日葵中心点的缩小倍数，真正的缩放倍数为 `cex/cex.fact`。
+
+`col`:
+: 散点的颜色。
+
+`bg`:
+: 点的背景色。
+
+`size`：
+: 向日葵花瓣的长度，单位为英寸。
+
+`seg.col`:
+: 花瓣颜色。
+
+`seg.lwd`:
+: 花瓣宽度。
+
+下面这句代码将绘制 
+图 \@ref(fig:sunflowerplot)：
+
+```{r, results='asis'}
+msg_code("sunflowerplot")
+```
+
+这幅图的颜色用的是金色 `"gold"`，目的是为了使向日葵散点图看起来与其名称相符，不过似乎使用鸢尾花的颜色更符合数据的背景，读者不妨试试看。
+
+## 平滑散点图 {#sec:smoothScatter}
+
+### 概述 {-}
+
+平滑散点图的基础仍然是散点图，但它并不直接将散点画出来，而是基于二维核密度估计 [@KernSmooth] 用特定颜色深浅表示某个位置的密度值大小，默认颜色越深说明二维密度值越大，即该处数据点越密集。二维核密度估计的原理和一维情况类似：一维核密度估计是在直线上按照距离远近对每个数据点加权，距离越近则对密度值贡献越大，因此数据点密集的地方的核密度值也相应大，二维情况下只是距离的计算放到了平面上，加权思想相同。
+
+由于平滑散点图大致保留了原始数据点的位置，因此两个变量之间的关系仍然可以从图中看出来，这一点和普通的散点图类似。平滑散点图进一步的优势在于它同时还显示了二维变量的密度，从密度中我们也许可以观察到局部的聚类现象（大块的深色）。
+
+### 示例 {-}
+
+我们对表 \@ref(tab:tab-BinormCircle) 绘制了平滑散点图，如图 \@ref(fig:smoothScatter) 所示。 从计算的角度来说，我们首先将平面划分为 $n\times n$ 的网格，计算每个网格点上的二维密度值，然后用颜色将密度值大小表达出来。关于这一点，可将图 \@ref(fig:smoothScatter) 放大 8 倍，就立刻理解"网格"的意思了。这幅图的原始散点图参见图 \@ref(fig:scatter-alpha) 左图。由于使用了核密度估计，这批数据中藏着的圆圈很容易就能被发现，因为它们的密度值都很大，导致这一圈上颜色也就相应较深。
+
+(ref:fig-smoothScatter-s) `BinormCircle` 数据的平滑散点图
+
+(ref:fig-smoothScatter) `BinormCircle` 数据的平滑散点图：基于核密度估计找出散点图中暗含的圆圈（圆圈上的颜色深）
+
+```{r smoothScatter,fig.width=4.5,fig.height=4.5,out.width="75%", fig.cap="(ref:fig-smoothScatter)",fig.scap="(ref:fig-smoothScatter-s)"}
+msg_graph("smoothScatter2")
+```
+
+### 绘制方法 {-}
+
+R 语言绘制平滑散点图的基础函数为 `smoothScatter()` ，其用法如下：
+
+```{r smoothScatter-usage, results='asis'}
+usage2(usage(smoothScatter, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x` 和 `y`：
+: 两个数值向量，或者如果不提供 `y` 的话，可以提供一个两列的矩阵/数据框等给 `x`。
+
+`nbin`:
+: 横纵坐标方向上划分网格的数目，可以是长度为 1 或 2 的整数向量。
+
+`bandwidth`:
+: 计算核密度估计时使用的带宽。
+
+`colramp`:
+: 生成颜色向量的函数，默认生成从白色到蓝色渐变的颜色向量。
+
+`nrpoints`:
+: 需要画出来的点的数目。因为平滑散点图的目的不是画散点，而是画颜色块，但有时候图形中某些地方的密度估计非常低，因此对应颜色也非常浅，导致读者难以察觉那些地方还有数据点的存在，此时不妨直接将这些"离群点"直接画出来，注意画点时按密度值从小到大的顺序画，一直画到第 `nrpoints` 个点。
+
+其它参数几乎都是画图的一般参数，此处不再介绍。
+
+该函数的一个示例如下：
+
+```{r, results='asis'}
+msg_code("smoothScatter")
+```
+
+如果想用 **ggplot2** 包来绘制平滑散点图，那么可以先安装 **ggpointdensity** 包，然后使用 `geom_pointdensity()` 函数即可：
+
+```{r, results='asis'}
+msg_code("smoothScatter2")
+```
+
+平滑散点图看起来和图 \@ref(fig:scatter-alpha) 右图比较相似，但前者蕴含了更多的数理统计背景。不过，我们也不必一味追求数学理论，透明色可叠加这一点性质体现出的原理又何尝不是一种密度估计呢？
+
+## 风玫瑰图 {#sec:windrose}
+
+<!--
+- 歌曲，电影，以其他浪漫图片为结尾
+- 历史上的风玫瑰图
+- 风玫瑰图的实质是直方图 跟地图类比 一张纸张连接成环 成球
+- R 语言的风玫瑰图
+- 益辉建议的风玫瑰图
+- 给书做广告
+-->
+
+### 概述 {-}
+
+严格来说，风玫瑰图（Wind Rose）分两种：风向玫瑰图和风速玫瑰图。前者仅展示风向的分布，而后者同时展示风向和风速的分布。随着现代观测仪器的普及，目前我们所说的风玫瑰图一般都是指后者。
+
+风玫瑰图通常用来展示东南西北甚至更多方向上的风力强度和频数，它是观察风力在各个方向上分布的一种直观办法。风玫瑰图的本质是堆叠的直方图，只是绘在了极坐标系中。它通常把水平方向以 0° 到 360°计，并平均分为 16 个风向区间，用 16 个扇形（或指针，或数据点）表示来自这些区间的风，在每一扇形上对各等风速进行频数汇总，最后除以观测时间内的观测次数（包括无风次数），就得到了各种风速在各个风向的频率，用扇环的半径表示出来即可。风玫瑰图在要求不高的时候也可以分 8 个或 12 个方向，也有细分为 32 个方向的。
+
+在一些与气象有关的部门，风玫瑰图有其特殊用处。例如，机场需要参考当地的风玫瑰图来决定应该以什么样的方向修建飞机跑道；再如，污染空气的工厂一般要建在城市的下风向，这就要参考风玫瑰图来选址。
+
+### 示例 {-}
+
+表 \@ref(tab:tab-windrose) 是伦敦 Marylebone 1998 年 1 月 1 日到 2005 年 6 月 23 日的空气污染数据。原数据为 10 列，这里我们仅使用风速和风向这两列。
+
+```{r tab-windrose}
+data(mydata, package = "openair")
+mydata2 <- mydata[, 2:3]
+names(mydata2) <- c("Wind Speed", "Wind Direction")
+kable2(mydata2, "伦敦 Marylebone 风速风向数据", insert_txt = "：1998 年 1 月 1 日到 2005 年 6 月 23 日")
+```
+
+图 \@ref(fig:windrose) 是当地风玫瑰图的示例，各种风速的频率分别用指针的一小节或一个扇环来表示。也就是说，指针的某一小节或者某个扇环的半径越长，表示该风速水平上的刮风次数越多。从图中可以看出，该地区最常刮西南偏南风，因为该方向的扇环半径最长，或者指针最长；相对来说东南风较少。无风的频率大约是 0.3 \%。
+
+(ref:fig-windrose-s) 伦敦 Marylebone 的风玫瑰图
+
+(ref:fig-windrose) 伦敦 Marylebone 的风玫瑰图：将风向分为 12 个（左）或 16 个（右）方向，每个方向用一根“指针”（左）或一个扇形（右）来表示该方向上风力的具体情况。从图中可以看出，该地区最常刮西南偏南风，该方向的扇环半径最长，或者指针最长；相对来说东南风较少。无风的频率大约是 0.3 \%
+
+```{r windrose,fig.width=5.4,fig.height=5.4,results="hide",fig.cap="(ref:fig-windrose)",fig.scap="(ref:fig-windrose-s)",fig.show='hold', out.width="49%"}
+msg_graph("windrose")
+```
+
+如果要在这所城市附近修建会造成空气污染的化工厂，那么可以考虑尽量选在城市的东北偏北，这样对城市居民生活的大气环境造成的危害最小。如果图 \@ref(fig:windrose) 是一个机场的长期风向数据，则机场跑道可能考虑东北偏北-西南偏南方向，刮风频率较高，风力较大。由于顺风对飞机飞行不利，所以飞机在机场起飞和降落最好是能逆风，这样能使飞机在较短距离升空和降落。笔者对机场建设了解甚少，这里只是介绍一种考虑的可能性。另外，根据笔者目前掌握的知识，当今的飞机似乎受风向影响已经大大减小了。
+
+### 绘制方法 {-}
+
+R 语言的 **openair** 包 [@openair] 有专门绘制风玫瑰图的函数 `windRose()`
+，用法如下：
+
+```{r, results='asis'}
+usage2(usage(windRose, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`mydata`:
+: 含有风速和风向数据的数据框。
+
+`ws`:
+: 数据框中记录风速的列名称。
+
+`wd`:
+: 数据框中记录风向的列名称。
+
+`ws.int`:
+: 风速划分区间。默认为 2 m/s。
+
+`angle`:
+: 风向划分角度区间。默认为 30。
+
+`type`:
+: 决定了如何把数据分割。默认不分割。可设置为 `"season"` `"year"`  `"weekday"` 等，那么函数会根据数据框中的时间列信息自动将数据划分为季节、年、星期几后再作图。也可以指定一列分类数据，按其因子的水平来分割作图。如果长度为 2，如`type = c("season", "weekday")`，则会生成 $2\times2$ 的风玫瑰矩阵图。
+
+`cols`:
+: 绘图颜色。可选值有 `"default"`、 `"increment"`、 `"heat"`、  `"jet"`、 `"hue"`。用户也可以自定义颜色，例如 `cols = c("yellow", "green", "blue", "black")`。
+
+`seg`:
+: 设定指针的宽度为风向划分角度区间的多少倍。例如 `seg = 0.5` 把宽度设为 `0.5 * angle`。
+
+`breaks`:
+: 决定了计算风速分段区间的方法。它可以是一个向量（依次给出区间端点），或者一个数字（决定拆分为多少段）。默认值是 4。例如，`ws.int` 默认值是 2 m/s，那么 `breaks = 4` 会把风速按照 2, 4, 6, 8 m/s。 的分割点来分区间统计。
+
+`paddle`:
+: 逻辑值，决定了是否显示指针柄。
+
+`key.header`、`key.footer`、`key.position`、`key`:
+: 控制图例的顶端、底部、位置和其它设置。其中，图例位置可取值为`"top"`、`"right"`、`"bottom"`、`"left"`。
+
+其它参数不常用，请读者自行查阅帮助。
+
+图 \@ref(fig:windrose) 所用的数据加载和图形绘制代码如下：
+
+```{r, results='asis'}
+msg_code("windrose")
+```
+
+<!--
+library(ggplot2)
+library(forcats)
+library(ggwindrose)
+
+gg1 = ggwindrose(data = mydata, method = 'hist') 
+gg3 = ggwindrose(data = mydata, method = 'area', ws_breaks = 1:8) +
+  scale_fill_brewer(palette = 'Blues', direction = -1)
+  
+-->
+
+## 生存函数图
+
+### 概述 {-}
+
+在很多医学研究中，我们主要关心的变量是病人的某种事件发生的时间，例如死亡、疾病复发等。事实上，以“生存时间”为研究对象的领域并不仅限于医学，例如在金融领域，我们可能需要了解信用卡持有者的信用风险发生时间。这类数据一般统称为生存数据（survival data）。生存数据通常有一个特征就是删失，即观测对象因为某种原因退出了我们的观察。
+
+本节要介绍的图形对象主要是生存函数（Survival Function），其定义是个体存活超过时间 $t$ 的概率： $$S(t)=P(T>t);\; t\geq0$$
+
+对于存在删失的生存数据 $(t_{i},\delta_{i}),\, i=1,\cdots,n$（其中 $t_{i}$ 为记录时间，$\delta_{i}=0$ 表示存在删失，1 表示个体没有删失），生存函数的 Kaplan-Meier 估计 [@Kaplan58] 为：
+
+$$\hat{S}(t)=\left\{ \begin{array}{ll}
+\prod_{i:\, t_{(i)}\leq t}(\frac{n-i}{n-i+1})^{\delta_{(i)}}, & \mbox{对}t\leq t_{(n)};\\
+\left\{ \begin{array}{ll}
+0 & \mbox{如果}\delta_{(n)}=1,\\
+\mbox{未定义} & \mbox{如果}\delta_{(n)}=0,
+\end{array}\right. & \mbox{对}t>t_{(n)}.
+\end{array}\right.$$
+
+关于生存分析的详细理论请参考 @Therneau00 等。
+
+### 示例 {-}
+
+表 \@ref(tab:tab-aml) 是一组急性髓细胞白血病（Acute Myelogenous Leukemia，AML）病人的生存数据。该数据有一个分组变量 `x` 表示病人是否接受了化疗。我们对这组数据绘制了生存函数图，如图 \@ref(fig:survival)。从图中可以看出，接受化疗的病人生存函数的下降速度比没接受化疗的病人要慢，表明化疗还是有一定作用的。
+
+```{r tab-aml}
+library(survival)
+kable2(aml, "急性髓细胞白血病病人生存数据")
+```
+
+(ref:fig-survival-s) 急性髓细胞白血病病人生存函数图
+
+(ref:fig-survival) 急性髓细胞白血病病人生存函数图
+
+```{r survival,fig.width=4.8,fig.height=3,out.width="80%", fig.cap="(ref:fig-survival)",fig.scap="(ref:fig-survival-s)",fig.show="hold", dev='tikz', fig.showtext = FALSE}
+msg_graph("survival2")
+```
+
+### 绘制方法 {-}
+
+本节示例所用的数据来自 R 语言的 **survival** 包 [@survival]：
+
+```{r,eval=FALSE,echo=TRUE}
+data(aml, package = "survival")
+```
+
+这个包提供了生存函数的计算和估计方法，以及作图函数。计算函数为 `survfit()`，返回一个 survfit 类的对象，而这个包扩展了泛型函数 `plot()`，使其拥有子函数 `plot.survfit()`，因此在估计完生存函数之后，我们可以直接调用 `plot()` 生成生存函数图。
+
+函数 `plot.survfit()` 的用法如下：
+
+```{r plot-survfit-usage, results='asis'}
+usage2(usage(survival:::plot.survfit, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x`:
+: 一个 survfit 类的对象，通常由 `survfit()` 返回。
+
+`conf.int`:
+: 决定是否在生存曲线上下作置信区间曲线（当图中只有一条生存曲线时默认会作置信区间）。
+
+`mark.time`:
+: 决定是否用短竖线标记出删失的时刻，或者直接指定一个时间向量以标记删失时刻。
+
+`mark`:
+: 给出删失标记的样式，即标记点的类型（参见图 \@ref(fig:point-type)）。
+
+利用 **survival**包绘制本节案例的代码如下：
+
+```{r, results='asis'}
+msg_code("survival")
+```
+
+**ggplot2** 包并没有提供生存函数的作图函数，然而 **survminer** 包提供的函数 `ggsurvplot()` 可以完成这项任务：
+
+```{r, results='asis'}
+msg_code("survival2")
+```
+
+进一步，我们可以用对数秩检验知道这两组病人的生存时间在 10\% 的显著水平下有显著差异：
+
+```{r survdiff-test, echo=TRUE}
+survdiff(Surv(time, status) ~ x, data = aml)
+```
+
+根据 \@ref(sec:plot) 小节和图 \@ref(fig:plot-type) 的讲解，读者不难发现，生存函数图实际上就是在生存函数估计值的基础上使用阶梯状参数 `type = "s"` 制成的线图。
+
+## 条件密度图 {#sec:cdplot}
+
+### 概述 {-}
+
+条件密度图（Conditional Density Plot），顾名思义，展示的是一个变量的条件密度，确切地说是一个分类变量 $Y$ 相对一个连续变量 $X$ 的条件密度 $P(Y|X)$。
+
+假设 $Y$ 的取值为 $1,2,\cdots,k$，那么条件密度图将按照 $X$ 的取值从小到大在纵轴方向上依次展示出 $Y=i\;(i=1,2,\cdots,k)$ 的条件概率分布比例 $P_{i}=P(Y=i|X=x)$，这些比例大小沿横轴方向上以多边形表示，在任一一个 $X$ 点，所有比例之和均为 1，这个性质是显而易见的：
+
+\begin{equation} 
+\sum_{i=1}^{k}P(Y=i|X=x)=1;\;\forall x
+(\#eq:cdp)
+\end{equation} 
+
+### 示例 {-}
+
+我们以美国国家航空和宇宙航行局的一批 O 型环（O-ring，一种由橡胶或塑料制成的平环，用作垫圈）失效数据（表 \@ref(tab:tab-fail-temperature)）为例。这批数据有两个变量：温度变量和是否失效的变量。
+
+```{r tab-fail-temperature}
+data(orings, package = "DAAG")
+orings$Fail = factor(apply(orings[, -1], 1, function(x) all(x == 0)),
+                     labels = c("yes", "no"))
+kable2(orings[, c("Temperature", "Fail")], "美国国家航空和宇宙航行局的一批 O 型环失效数据", only_head = FALSE)
+```
+
+为了探索温度对 O 型环失效的影响，我们可以使用诸如 Logistic 回归之类的统计模型去计算、分析，而这里我们用条件密度图来展示温度的影响，如图 \@ref(fig:cdplot)。
+
+由于因变量是一个二分类变量，图中相应有两个多边形（带颜色的区域）分别表示是否失效。从图中我们可以清楚观察到，随着温度的上升，失效的可能性越来越小（下面的多边形高度越来越高），但失效的概率与温度并不是简单的线性关系。例如，55 °F 到 65 °F 之间的温度上升会使得失效概率迅速下降；而当气温更高的时候，失效概率下降的速度会减缓。为了更清楚地观察条件密度图的效果，我们也将原始数据以点的形式添加到图中；不难发现，O 型环失效的情况大多对应着相对较低的温度。
+
+(ref:fig-cdplot-s) 航天飞机 O 型环在不同温度下失效的条件密度图
+
+(ref:fig-cdplot) 航天飞机 O 型环在不同温度下失效的条件密度图：随着温度升高，O 型环越来越不容易失效
+
+```{r cdplot,fig.width=4.8,fig.height=2.4, out.width="80%", fig.cap="(ref:fig-cdplot)", fig.scap="(ref:fig-cdplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("cdplot2")
+```
+
+### 绘制方法 {-}
+
+R 语言中绘制条件密度图的基础函数为 `cdplot()`，它主要是基于密度函数 `density()` 完成条件密度的计算 [@Hofmann05]，其用法如下：
+
+```{r cdplot-usage, results='asis'}
+usage2(usage(graphics:::cdplot.default, output = FALSE))
+usage2(usage(graphics:::cdplot.formula, output = FALSE))
+```
+
+函数 `cdplot()` 是泛型函数，它可以支持两种参数类型：直接输入两个数值向量 `x` 和 `y` 或者一个公式 `y~x`。 
+
+\noindent 参数含义：
+
+`x`:
+: 条件变量 $X$，它是一个数值向量。
+
+`y`:
+: 一个因子向量，即离散变量 $Y$。
+
+`plot`:
+: 逻辑值，决定了是作出图形还是仅仅计算而不作图。
+
+`ylevels`:
+: 给出因子的取值水平（或者分类的名称）。
+
+`bw` 、 `n` 、 `from` 和 `to`：
+: 都将被传递给 `density()` 函数以计算密度值，请参考 `density()` 帮助文件。
+
+`col`:
+: 给定一个颜色向量，用以代表 $Y$ 的各种取值（默认为不同深浅的灰色）。
+
+`border`:
+: 多边形的边线颜色。
+
+其它参数诸如标题、坐标轴范围等此处略去。
+
+利用该函数来为表 \@ref(tab:tab-fail-temperature) 绘制条件密度图的代码为：
+
+```{r, results='asis'}
+msg_code("cdplot")
+```
+
+也可以使用 **ggplot2**包的 `geom_density()` 函数绘制：
+
+```{r, results='asis'}
+msg_code("cdplot2")
+```
+
+这里需要提醒读者注意的是，密度值的计算和估计与数据样本量大小有关系：小的样本量可能会导致密度估计的不精确，进而导致图形的误导性。因此，使用条件密度图的时候，务必注意样本量的问题。
+
+## 棘状图 {#sec:spineplot}
+
+### 概述 {-}
+
+棘状图（Spine Plot/Spinogram[^spineplot-spinogram]）可以看作是马赛克图（\@ref(sec:mosaicplot) 小节）的特例，也可以看作是堆砌条形图（\@ref(sec:barplot) 小节）的推广。棘状图的外观看起来像是高低不齐的荆棘丛，因此而得名。
+
+[^spineplot-spinogram]: 对于连续的自变量则称为 Spine Plot，离散自变量则为 Spinogram，这个单词是仿照 Histogram 而造。
+
+棘状图的原理和条件密度图非常类似，都展示了在给定某个自变量的情况下因变量的概率分布。但是，棘状图首先对连续型的自变量进行了离散化处理，然后在离散的区间内计算因变量的条件分布。除此之外，棘状图还兼顾了自变量的分布，在横轴方向上以不同宽度的矩形表示自变量的分布密度。因此，从纵轴方向上看，棘状图用堆砌的矩形块表示因变量的分布密度，这使得它看起来像堆砌的条形图；而从横轴方向上看，棘状图用不同的矩形宽度表示自变量的密度分布，这使得它又像是马赛克图（马赛克图中矩形的长宽和频数成比例）。尤其是自变量为分类变量时，棘状图与马赛克图几乎无异。从概念和定义上来讲，棘状图实际上是用 $P(Y|X)$ 对 $P(X)$ 所作的图。
+
+### 示例 {-}
+
+图 \@ref(fig:spineplot) 重新使用航天飞机 O 型环失效数据（表 \@ref(tab:tab-fail-temperature)）作了棘状图。我们可以看到，自变量温度被分为了 7 个长度为 5 的区间，每个区间内失效的比率都用堆砌的矩形表达。注意：棘状图的横坐标轴比较特殊，它对自变量的值来说并不一定是均匀的，因为图中矩形的宽需要表达自变量的密度，所以横坐标的作用仅仅是作为密度值大小的参照物。棘状图会返回一个汇总表，表中给出了自变量的分段情况以及相应的频数。读者可以结合频数表理解棘状图。
+
+(ref:fig-spineplot-s) 航天飞机 O 型环在不同温度下失效的棘状图
+
+(ref:fig-spineplot) 航天飞机 O 型环在不同温度下失效的棘状图：随着温度升高，O 型环失效的概率下降；从横轴方向上看，观测的温度数据的分布大多集中在 $(60, 75]$ 区间内
+
+```{r spineplot,fig.width=4.8,fig.height=3,out.width="75%",fig.cap="(ref:fig-spineplot)",fig.scap="(ref:fig-spineplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("spineplot")
+```
+
+### 绘制方法 {-}
+
+R 中棘状图的函数为 `spineplot()` ，其用法如下：
+
+```{r spineplot-usage, results='asis'}
+usage2(usage(graphics:::spineplot.default, output = FALSE))
+usage2(usage(graphics:::spineplot.formula, output = FALSE))
+```
+
+棘状图函数是泛型函数，可以直接接受数据或者公式作为参数。
+
+\noindent 参数含义：
+
+`x`:
+: 可以是一个分类或数值向量（自变量），也可以直接输入一个列联表，后一种情况下则不需要再输入 `y` 参数。
+
+`y`:
+: 因变量，是一个分类变量。
+
+`breaks`:
+: 在自变量是连续变量时，给定自变量的分段区间或者分段方法。这个参数最终被传递给直方图函数 `hist()` （回顾 \@ref(sec:hist) 小节），以便计算自变量的密度。
+
+`off`:
+: 指定矩形竖条之间的间距。对于连续自变量来说，`off` 默认为 0；对于离散自变量， `off` 默认为 2。
+
+`col`:
+: 设定不同类别的 `y` 的颜色。
+
+图 \@ref(fig:spineplot) 可以用如下代码绘制：
+
+```{r, results='asis'}
+msg_code("spineplot")
+```
+
+## 二维箱线图 {#sec:bagplot}
+
+### 概述 {-}
+
+在 \@ref(sec:boxplot) 小节中我们介绍了普通的箱线图，即用箱线表示一维数据的各个分位数。在二维情况下，我们可以用类似的思想画二维箱线图。
+
+二维箱线图又名袋图（Bag Plot），它由 @Rousseeuw99 提出。二维箱线图的做法是从数据的中心向外，逐渐用凸包多边形将散点图中的点包起来，直到包到一半的数据点，此时的凸包相当于普通箱线图中的箱子，然后再向外包到所有数据点。二维箱线图的基本构成就是一个中心和两个多边形，它们能粗略描述数据的二维分布情况。
+
+### 示例 {-}
+
+*Consumer Reports* 杂志 1990 年四月刊给出了一组汽车测试报告，记录了一些车型的价格、产地等信息（表 \@ref(tab:tab-car-test)）。
+
+(ref:tab-cartest) Consumer Reports 杂志的汽车测试报告数据
+
+(ref:tab-cartest-s) *Consumer Reports* 杂志的汽车测试报告数据
+
+```{r tab-car-test}
+data(car.test.frame, package = "rpart")
+kable2(car.test.frame, "(ref:tab-cartest)", x_scap2 = "(ref:tab-cartest-s)")
+```
+
+我们对车重 `Weight` 和气缸排量 `Disp.`两个变量绘制了二维箱线图，如图 \@ref(fig:bagplot) 左图。图中心有一个米字型的点，代表二维数据的中位数；内层深色袋子包含了一半的数据点（约 30 个）。作为对比，右图从二维核密度估计的角度画出了密度值的等高图（见 \@ref(sec:contour) 小节），这两幅图可以看作是相通的：左图里层袋子就是右图中密度曲面[^bagplot-surf] 从中心向外积分数值到 0.5 时对应的区域。
+
+[^bagplot-surf]: 不要忘记：等高图实际上是三维图形！请想象这个“曲面”的形状。
+
+(ref:fig-bagplot-s) 汽车数据的二维箱线图和密度等高图
+
+(ref:fig-bagplot) Consumer Reports 杂志 中汽车数据的二维箱线图（左）和二维密度等高图（右）
+
+```{r bagplot,fig.width=7,fig.height=3,fig.cap="(ref:fig-bagplot)",fig.scap="(ref:fig-bagplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("bagplot2")
+```
+
+### 绘制方法 {-}
+
+R 中 **aplpack** 包 [@aplpack] 提供了一个函数 `bagplot()` 可以用来画二维箱线图，其用法如下：
+
+```{r bagplot-usage, results='asis'}
+library(aplpack, warn.conflicts = FALSE)
+usage2(usage(bagplot, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x` 和 `y`:
+: 分别是横纵坐标轴上的数据向量，也可以直接提供一个 2 列的矩阵或数据框。
+
+`factor`:
+: 类似 `boxplot()` 中的 `range` 参数，用来定义离群点。取值越大，则离群点越少（数据点离中心的距离可以越远）。
+
+`approx.limit`:
+: 界定了大数据的样本量。如果原始数据的样本量超过这个数字，则随机抽取 `approx.limit` 个数据点用作二维箱线图的计算。
+
+`dkmethod`:
+: 取值 1 或 2，决定用哪种方法计算袋子的范围。取值 2 计算更精确。
+
+其它设置颜色或形状的参数此处略去。
+
+汽车数据车重和气缸排量的二维箱线图和二维密度等高图可以用以下代码来绘制：
+
+```{r, results='asis'}
+msg_code("bagplot")
+```
+
+\noindent 这样得到的二维箱线图里，外层袋子本应包含所有数据点，但由于默认设置有 5 个离群点的存在，所以只包含了 55 个数据点，读者可以将 `factor` 参数设置为 6，便可包含所有数据点。
+
+**ggplot** 包并没有现成的函数来绘制二维箱线图。为了读者方便，我们的 **MSG** 包里包含了一个函数 `stat_bag()`，可以用来绘制。图 \@ref(fig:bagplot) 的作图代码如下： 
+
+```{r, results='asis'}
+msg_code("bagplot2")
+```
+
+
+## 思考与练习
+
+1. 尽管一元函数曲线图和展示数据似乎没什么关系，但它在优化一元目标函数或者对一元函数求根时通常有帮助。例如我们用 `uniroot()` 求根时需要提供根的大致区间，请参考帮助文档说明一元函数曲线图在这里有什么用处。
+
+2. 在信息可视化（Information Visualization）领域，树图和标签云都非常流行，实际上这些图形从统计学角度来说表达的信息非常简单：它们表达的只是数字大小。树图为 Treemap，不是 \@ref(sec:rpart) 小节提到的分类与回归树，但思想类似，也是递归分割，如图 \@ref(fig:disk-usage) 是笔者操作系统中的 R 包文件大小树图。树图主要是用矩形大小代表数字大小，纵横交替分割一个大矩形为小单元。图 \@ref(fig:disk-usage) 中最大的灰色矩形代表所有 R 包的大小，在 \~/R/x86\_64-pc-linux-gnu-library/2.12/ 文件夹下有若干 R 包，每个包都有自己的大小，其中最大的是 **mapdata**，其次是 **RGtk2**，然后是 **Rcpp**，等等。纵向划分的长矩形表示一个个包（面积和包的大小成比例），然后在这些矩形内部再横向划分小矩形分别表示子文件夹的大小，若子文件夹下还有子文件夹，那么继续纵横划分。树图同时表达了嵌套关系和数值大小，看起来一目了然，通常最大的矩形能最先吸引人的注意力。例如，若我们想清理磁盘上的文件，那么就会考虑究竟是哪些文件占用了很大的空间，此时树图就是很好的可视化方法（笔者正是用这样的办法清理自己的磁盘空间的）。图 \@ref(fig:disk-usage) 显示的是 Ubuntu 系统下的 Disk Usage Analyzer，Windows 下也有类似的软件如 WinDirStat。  
+  标签云就更简单了：将一些文本标签按一定顺序排在平面上，文本大小和某个数值成比例，这样最大的文字就能最先吸引我们的注意力。例如我们计算一篇文章中单词出现的频数，用频数大小来决定单词的大小，这样高频出现的词在图中一眼就能看出来，如图 \@ref(fig:yihui-name-wordle) 是笔者英文博客[^yihui-en]利用 Wordle 生成的标签云。显然，animation 和 Sweave 两个词字号最大，这说明这两个词在博客中出现频率最高，这不难解释：因为笔者一直开发 **animation** 包，并研究着 Sweave（后来以此催生了 **knitr**）。  
+  本书大部分内容都是关于数据可视化的，统计学的成分比较大。请结合这里给出的两幅图形思考，信息可视化和数据可视化的区别是什么？它们各有什么优势以及如何结合它们的优势？
+
+
+(ref:fig-disk-usage-s) 系统中 R 附加包文件大小的树图
+
+(ref:fig-disk-usage) 系统中 R 附加包文件大小的树图：在笔者的系统中，所有 R 包中最大的是 **mapdata**，其次为 **RGtk2**
+
+```{r disk-usage,fig.cap="(ref:fig-disk-usage)",fig.scap="(ref:fig-disk-usage-s)",echo=FALSE}
+knitr::include_graphics("images/disk-usage.png", dpi = NA)
+```
+
+
+
+[^yihui-en]: <https://yihui.org/en/>
+
+(ref:fig-yihui-name-wordle-s) 笔者英文博客的标签云
+
+(ref:fig-yihui-name-wordle) 笔者英文博客的标签云：animation 和 Sweave 两个词最抢眼
+
+```{r yihui-name-wordle,fig.cap="(ref:fig-yihui-name-wordle)",fig.scap="(ref:fig-yihui-name-wordle-s)",echo=FALSE}
+knitr::include_graphics("images/yihui-name-wordle.png", dpi = NA)
+```

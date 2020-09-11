@@ -1,0 +1,708 @@
+# 矩阵图形 {#cha:gallerymatrix}
+
+> 　　长长的紫杉小道昏暗无光，两边的树篱修剪整齐，像是两堵高墙，路和树篱间还有两条狭长的草地。小道顶头有座破旧的凉亭，中段有扇偏门通向荒原，正是老人留下烟灰的地方。白色木门上装着门闩，外面是一望无际的荒原。我记得你的推理，试着在现场还原当时的情形。老人站在门旁，看见什么东西从荒原过来，吓得失去理智，撒腿就跑，最后因为极度恐惧和心脏衰竭身亡，逃跑路线正是眼前那条阴森的长隧道。问题是，他在躲什么呢？荒原上的牧羊犬？还是暗如黑夜、悄如幽灵的魔鬼猎犬？有没有人为因素？那个面色苍白的巴里莫尔格外谨慎，会不会隐瞒了什么？一切都模糊不清，背后始终有一层罪恶的阴影。
+>
+> ——柯南 $\cdot$ 道尔《巴斯克维尔的猎犬》
+
+矩阵数据在形式上属于二维数据（行$\times$列），实际上有三个变量，即每个网格的数值、该网格对应的行数和列数。由于其形式上的特点，我们在本章专门介绍这类数据的统计图形。
+
+二维联表是用矩阵形式来描述统计量的表格。为此，我们把二维联表与矩阵数据在本章一并介绍。等高图的绘制基于散点图，需要经过计算而得到二维核密度矩阵，所以也放在本章介绍。
+
+## 等高图/等高线 {#sec:contour}
+
+### 概述 {-}
+
+等高图（Contour Plot）和等高线（Contour
+Line，或称为等值线）表面上看起来是二维形式，但实际上展示的是三维数据。我们知道，三维图形往往比二维图形看起来更具有吸引力，然而在平面上展示三维图形也有其缺陷，最主要的就是视角问题：一幅三维图形可以有无数种视角，正视、侧视、俯视可能都会看到不同的信息，而且各种角度下可能都有一部分数据被前面的数据挡住而不能被看到。当然，这些问题都可以通过更灵活的图形设备克服，如 **rgl** 包 [@rgl]，但是在更多的情况下，我们的图形都必须展示在静态介质上（如书籍、论文等），我们不可能在纸面上拖动鼠标对图形进行交互式操作。因此，我们需要等高图这样一种以二维形式展示三维数据的工具。
+
+(ref:fig-contour-grid-s) 网格数据的示意图
+
+(ref:fig-contour-grid) 网格数据的示意图：体会 x、y 与 z 的对应关系
+
+```{r contour-grid,fig.width=4.8,fig.height=2.5,echo=FALSE,fig.cap="(ref:fig-contour-grid)",fig.scap="(ref:fig-contour-grid-s)",fig.show="hold", dev='tikz', fig.showtext = FALSE}
+msg_graph("contour-grid2-tikz")
+```
+
+
+首先，我们需要理解等高图所展示数据的形式，因为它与我们想象的三维数据有所不同：并非三个数值向量，而是两个数值向量 $x$、$y$ 和一个相应的矩阵$z$。我们不妨将数据的形式想象为一座山峰，两个数值向量分别是横向和纵向的位置（如经纬度），第三维数据是每一种横纵向位置点组合上的高度，而横纵交叉组合之后形成的是一个网格，矩阵 $z$ 则是这个网格上的高度数值，用数学式子表示这种关系就是 $z_{ij}=f(x_{i},y_{j})$。图 \@ref(fig:contour-grid) 为这种网格数据的示意图，请读者自行体会。
+
+所谓等高线，就是将平面上对应的 z 值（高度）相等的点连接起来形成的线。同样，我们可以以一座山峰来想象：在同一海拔高度上围绕山峰一圈的线就是一条等高线。图 \@ref(fig:contour-grid)
+中的连线即等高线，如实线表示的是高度为 2 的点，而虚线表示高度为 1 的点。注意等高线之间不可能相交，因为同一点不可能同时有两种高度。
+
+等高线上通常会有数字表示高度，从这些数字我们不难想象出三维的山峰的形状，从这个意义上来说，等高图本质上也是一种三维图示方法。
+
+### 示例 {-}
+
+表 \@ref(tab:tab-ChinaLifeEdu) 是一组我国人口预期寿命和高学历人口数量（定义为大专以上学历人数）的数据，数据来源于 2005 年中国统计年鉴（实际数据来自 2000 年）。首先，我们对这组二维变量利用 R 语言的 **KernSmooth** 包 [@KernSmooth] 进行核密度估计，得到二维核密度值（一个矩阵）。然后，用两个原始变量以及这个密度值矩阵作等高图（图 \@ref(fig:contour-pop)）。
+
+```{r tab-ChinaLifeEdu}
+data(ChinaLifeEdu, package = "MSG")
+kable2(ChinaLifeEdu, "2005 年我国人口预期寿命和高学历人口数量")
+```
+
+(ref:fig-contour-pop-s) 中国 31 地区国民预期寿命和高学历人数密度等高图
+
+(ref:fig-contour-pop) 2005 年中国 31 地区国民预期寿命和高学历人数密度等高图
+
+```{r contour-pop,fig.width=6,fig.height=4,results="hide",fig.cap="(ref:fig-contour-pop)",fig.scap="(ref:fig-contour-pop-s)",fig.showtext=TRUE,fig.show="hold"}
+msg_graph("contour-pop2")
+```
+
+由于密度值反映的是某个位置上数据的密集程度，图 \@ref(fig:contour-pop) 所能揭示的现象是：中国 31 省市自治区在人口预期寿命和高学历人口数量上呈现出聚类的特征。图中密度值大的区域主要有中部、右上和左下三个，东中西格局比较明显，即：东部地区分布在图中右上角，中部省市分布在图中中部，西部地区集中在图中的左下角。对照图 \@ref(fig:symbols-pop) 可以知道聚类的具体地区名称，就更能理解这里"聚类"的含义了。这批数据更为详细的分析见 \@ref(sec:symbols) 小节。
+
+### 绘制方法 {-}
+
+R 中等高图的函数为 `contour()`，同时 **grDevices** 包中也提供了等高线的计算函数 `contourLines()`，用法分别如下：
+
+```{r contour-usage, results='asis'}
+usage2(usage(contour.default, output = FALSE))
+usage2(usage(contourLines, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`nlevels`:
+: 设定等高线的条数、调整等高线的疏密。
+
+`levels`:
+: 设定一系列等高线的 `z` 值，只有这些值或者这些值附近的点才会被连起来。
+
+`labels`:
+: 等高线上的标记字符串，默认是高度的数值。
+
+`xlim` 、 `ylim` 和 `zlim`:
+: 设定分别设定 `x` 、 `y` 与 `z` 的范围，默认从数据中获得。
+
+`method`:
+: 设定等高线的画法，有三种取值：`"simple"`（在等高线的末端加标签、标签与等高线重叠）、`"edge"`（在等高线的末端加标签、标签嵌在等高线内）或 `"flattest"`（在等高线最平缓的地方加标签、嵌在等高线内）。
+
+其它参数用来调整等高图的外观，此处略去不介绍。
+
+`contour()` 函数用来绘制图 \@ref(fig:contour-pop) 的代码如下：
+
+```{r, results='asis'}
+msg_code("contour-pop")
+```
+
+也可以用 **ggplot2** 包的 `geom_contour()` 函数来绘制，并且配合使用 **metR** 包中的 `geom_text_contour()` 函数来给等高线添加数字：
+
+```{r, results='asis'}
+msg_code("contour-pop2")
+```
+
+\noindent 我们在绘图前先计算了二维核密度值。实际上，**ggplot2** 包的 `geom_density2d()` 函数可以更方便地绘制等高线，无需事先计算二维核密度：
+
+```{r,eval=FALSE, echo=TRUE}
+ggplot(ChinaLifeEdu, aes(Life.Expectancy, High.Edu.NO)) +
+  geom_density2d() +
+  geom_point()
+```
+
+在 **graphics** 包中还有一个类似的等高图函数 `filled.contour()`，而 **ggplot2** 包中也有另一个函数 `geom_density_2d_filled()`, 原理完全类似，只是用颜色来区分高度值的大小并且有颜色图例，看起来可能更美观一些，\@ref(sec:filled-contour) 小节中我们会详细介绍。
+
+## 颜色等高图/层次图 {#sec:filled-contour}
+
+### 概述 {-}
+
+颜色等高图，@Cleveland93 又称之为层次图（Level Plot），与等高图的原理完全类似，只是颜色等高图用不同颜色表示不同高度，并配有颜色图例，用以说明图中的颜色与高度值的对应关系。读者可以参考 \@ref(sec:contour) 小节关于等高图的介绍。
+
+### 示例 {-}
+
+我们举两个颜色等高图的例子。
+
+第一个例子是 \@ref(sec:contour) 小节介绍的我国国民预期寿命和高学历人数密度等高图，可以用颜色等高图来展示，如图 \@ref(fig:density-2d-filled) 所示。该图与等高线图 \@ref(fig:contour-pop) 含义相同，只是改用颜色来表示二维核密度，看上去更直观。
+
+(ref:fig-density-2d-filled) 2005 年中国 31 地区国民预期寿命和高学历人数密度颜色等高图
+
+(ref:fig-density-2d-filled-s) 中国 31 地区国民预期寿命和高学历人数密度颜色等高图
+
+```{r density-2d-filled,fig.width=6,fig.height=4,results="hide",fig.cap="(ref:fig-density-2d-filled)",fig.scap="(ref:fig-density-2d-filled-s)",fig.showtext=TRUE,fig.show="hold"}
+msg_graph("density-2d-filled")
+```
+
+第二个例子，我们使用新西兰 Maunga Whau 火山高度矩阵数据（表 \@ref(tab:tab-volcano)）。这份数据包含了在 10 m $\times$ 10 m 的地理网格上测得的火山高度，是一个 $87\times61$ 的矩阵。
+
+```{r tab-volcano}
+data(volcano)
+kable2(volcano[, 1:12], "新西兰 Maunga Whau 火山高度矩阵数据", coln = ncol(volcano))
+```
+
+我们将这个矩阵数据绘制成图 \@ref(fig:filled-contour)。仔细观察这幅图，由于火山口的存在，颜色等高图的中部（偏左）有一小块区域的颜色并非白色，意即此处的高度比周围一圈要低。这种情况在三维图中有时未必能够迅速看出来，必须将视角调整为略向下俯视才能看到火山口。注意本图的调色板用的是"绿黄棕白"调色板，如 \@ref(sec:palette) 小节所介绍的，这种调色板比较适合展示地理数据。图 \@ref(fig:persp-pop)
+提供了真实的火山立体图形。
+
+(ref:fig-filled-contour-s) 新西兰 Maunga Whau 火山高度数据颜色等高图
+
+(ref:fig-filled-contour) 新西兰 Maunga Whau 火山高度数据颜色等高图
+
+```{r filled-contour,fig.height=4.3,fig.width=7,results="hide",fig.cap="(ref:fig-filled-contour)",fig.scap="(ref:fig-filled-contour-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("filled-contour")
+```
+
+### 绘制方法 {-}
+
+R 中的颜色等高图函数为 `filled.contour()`，其用法如下：
+
+```{r filled-contour-usage, results='asis'}
+usage2(usage(filled.contour, output = FALSE))
+```
+
+这里面大多数参数与 `contour()` 函数完全相同，区别在于多了几个定义颜色的参数。 
+
+\noindent 参数含义：
+
+`color.palette`:
+: 给定一个调色板函数，用以生成一系列颜色供等高图填充使用，默认是青、白、粉调色板（参考 \@ref(sec:palette) 小节）；如果我们不指定调色板，也可以用 col 参数指定各高度水平对应的颜色。
+
+`plot.title` 、 `plot.axes` 、 `key.title` 和 `key.axes`:
+: 分别控制着等高图的标题、等高图的坐标轴、图例的标题和图例的坐标轴，它们都能接受若干语句（statement）作为参数值。
+
+利用该函数来绘制图 \@ref(fig:filled-contour) 的代码如下：
+
+```{r, results='asis'}
+msg_code("filled-contour")
+```
+
+在这个例子中，颜色等高图的图形布局（等高图和图例实质上都是独立的图形）是用 `layout()` 函数（\@ref(sec:multipage) 小节）完成的，这给我们带来了扩展上的不便，主要是因为颜色等高图的坐标系统与单幅统计图形的坐标系统并不一样，例如我们无法在作完一幅等高图之后再往图中添加诸如标题、坐标轴等图形元素。这种情况下，我们不妨使用另一种类似的图形——颜色图，参见 \@ref(sec:image) 小节。
+
+
+## 颜色图 {#sec:image}
+
+### 概述 {-}
+
+颜色图（Color Image）与颜色等高图看起来非常类似，但是等高图需要从网格矩阵中计算等高的数据点，有时还需要一些平滑处理，而颜色图并不涉及任何背后的计算，只是简单将一个网格矩阵映射到指定的颜色序列上，以颜色方块表示数据的大小。在数据规律性较强且数据量较大的时候，这两种图形的区别微乎其微；而当数据没什么规律或者数据量比较小的时候，颜色图的色块就可以很清楚地显露出来了。图 \@ref(fig:image24)
+为一个简单的示意图。
+
+(ref:fig-mage24-s) 颜色图中色块与数值的对应关系
+
+(ref:fig-mage24) 颜色图中色块与数值的对应关系：矩阵中数值越大，色块越趋近于白色，反之趋近红色
+
+```{r image24,fig.width=4,fig.height=1.2,out.width="75%", fig.cap="(ref:fig-mage24)",fig.scap="(ref:fig-mage24-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("image242-tikz")
+```
+
+### 示例 {-}
+
+这里我们仍然以新西兰 Maunga Whau 火山高度数据（表 \@ref(tab:tab-volcano)）为例，绘制了颜色图（图 \@ref(fig:image)）。从外观上来看，它与前面的颜色等高图几乎无异（图  \@ref(fig:filled-contour)），但图 \@ref(fig:image) 中多了一些等高线。
+
+(ref:fig-image-s) 新西兰 Maunga Whau 火山高度数据颜色图
+
+(ref:fig-image) 新西兰 Maunga Whau 火山高度颜色图：图 \@ref(fig:persp) 提供了真实的火山立体图形；读者可以到本书主页下载原图并放大 8 倍以上查看颜色图和颜色等高图的区别：颜色图是用颜色填充方块，而颜色等高图则是用颜色填充等高线之间的区域
+
+```{r image,fig.cap="(ref:fig-image)",fig.scap="(ref:fig-image-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("image2")
+```
+
+### 绘制方法 {-}
+
+R 中颜色图的基础绘图函数为 `image()`，其用法如下：
+
+```{r image-usage, results='asis'}
+usage2(usage(image.default, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x` 、 `y` 、 `z`:
+: 与等高线的参数类似，不过由于该函数为泛型函数，因此也可以接受不同类型的参数。这三个参数除了可以接受两个数值向量和一个矩阵之外， `x` 还可以接受一个列表，列表中包含三个子对象：`x$x`、`x$y` 和 `x$z`，这三个子对象分别为两个数值向量和一个矩阵，这种情况下就不需要另外单独提供 `y` 和 `z` 参数了。
+
+`col`:
+: 设置一个颜色序列，以便映射到不同大小的数值。
+
+`add`:
+: 逻辑值，决定是否将颜色图添加到现有图形上。
+
+`breaks`:
+: 给定 `z` 分段的区间端点。
+
+以下代码可以绘制新西兰 Maunga Whau 火山高度的颜色图：
+
+```{r, results='asis'}
+msg_code("image")
+```
+
+在这段代码中，我们先绘制了颜色图，然后添加了等高线，这也说明了 R 基础绘图函数绘制的颜色图较之颜色等高图的灵活性和可扩展性。在 \@ref(sec:filled-contour) 小节的最后，我们曾提到颜色等高图作完之后就不容易再往图中添加图形元素，而这里颜色图只是单幅图形，作完之后仍然可以方便地添加图形元素。
+
+
+**ggplot2** 包绘制颜色图的函数是 `geom_tile()`：
+
+```{r, results='asis'}
+msg_code("image2")
+```
+
+统计数据中有不少是矩阵形式，例如相关系数阵、协方差阵等。我们可以将颜色图应用到这些矩阵形式数据的展示上。尤其是当矩阵行数列数较大时，我们可以借助人眼对颜色的视觉感知从颜色图中迅速找出一定的统计特征来（如很大或者很小的数值）。相比之下，对数据的直接观察并不容易找到规律或特征，因为这种形式下我们必须在脑中对数据两两比较，其速度必然会很慢。
+
+**lattice** 包 [@Sarkar08] 中提供了一个类似的函数 `levelplot()`，展示方法更为灵活，感兴趣的读者请参考函数的帮助文件。
+
+## 三维透视图 {#sec:persp}
+
+### 概述 {-}
+
+相比其二维平面图形来说，三维透视图（Perspective Plot）在视觉上更具有吸引力。三维透视图的数据基础是网格数据（参考 \@ref(sec:contour) 小节和图 \@ref(fig:contour-grid)），它将一个矩阵中包含的高度数值用曲面连接起来，便形成了我们所看到的三维透视图。
+
+### 示例 {-}
+
+仍以新西兰 Maunga Whau 火山高度矩阵数据（表 \@ref(tab:tab-volcano)）为例，我们将这个矩阵数据作成三维透视图，即图 \@ref(fig:persp)。
+
+
+(ref:fig-persp-s) 新西兰 Maunga Whau 火山的三维透视图
+
+(ref:fig-persp) 新西兰 Maunga Whau 火山的三维透视图
+
+```{r persp,fig.height=4,fig.width=7,fig.cap="(ref:fig-persp)",fig.scap="(ref:fig-persp-s)"}
+msg_graph("persp")
+```
+
+### 绘制方法 {-}
+
+R 中透视图的函数为 `persp()` ，其用法如下：
+
+```{r persp-usage, results='asis'}
+usage2(usage(graphics:::persp.default, output = FALSE))
+```
+
+透视图函数为泛型函数，主要体现在它的第一个参数既可以是单个 `x` 向量，也可以是一个包含了向量 `x` 和 `y` 的列表，这一点与等高图函数是类似的。
+
+\noindent 参数含义：
+
+`x` 和 `y`:
+: 分别是两个数值向量。
+
+`z`:
+: 一个与前两个参数对应的矩阵。
+
+`xlim` 、 `ylim` 和 `zlim`:
+: 分别设定三个坐标轴的范围。
+
+`xlab` 、 `ylab` 和 `zlab`:
+: 分别设定三个坐标轴的标题。
+
+`theta` 和 `phi`:
+: 分别设定立体图形左右方向和上下方向旋转的角度。
+
+`r`:
+: 设定眼睛离透视图中心的距离，这个距离的远近会给我们一种从远近看物体的感觉。
+
+`d`:
+: 设定立体效果的程度。大于 1 的值会减弱立体程度，反之会增强立体程度。
+
+`scale`:
+: 逻辑值，决定是否对三个坐标进行缩放。若为 `TRUE`，则 `x` 、 `y` 和 `z` 都会被缩放到 $[0, 1]$ 范围内；若为 `FALSE`，那么所有坐标轴都按照数据的原始量纲处理，这样可以得到数据的真实比例。
+
+`expand`:
+: z 轴的缩放因子，决定了 z 轴的长短。
+
+`col`:
+: 组成曲面的所有小方块的颜色。
+
+`border`:
+: 组成曲面的小方块的边框样式，设置为 `NA` 可以去掉边框。
+
+`ltheta` 和 `lphi`:
+: 设置透视图的光源位置。
+
+`shade`:
+: 决定阴影效果。
+
+`box`:
+: 逻辑值，设定透视图是否需要画外框。
+
+`axes`:
+: 决定是否画坐标轴。
+
+`nticks`:
+: 坐标轴刻度线的数目。
+
+`ticktype`:
+: 设定坐标轴刻度类型：取值 `"simple"` 则简单画箭头表示坐标轴，`"detailed"` 则将详细的刻度标记在坐标轴上。
+
+我们使用这个函数绘制图 \@ref(fig:persp) 的代码如下：
+
+```{r, results='asis'}
+msg_code("persp")
+```
+
+我们可以使用其它函数，为三维透视图添加图形元素，如图 \@ref(fig:persp-pop)，展示了新西兰 Maunga Whau 火山的真面目。读者不妨将这幅立体图形与等高图 \@ref(fig:filled-contour) 和颜色图 \@ref(fig:image) 对应起来并分别体会等高图和颜色图是怎样展示三维数据的。
+
+(ref:fig-persp-add-s) 向三维透视图中添加图形元素的展示
+
+(ref:fig-persp-add) 向三维透视图中添加图形元素的展示：`trans3d()` 函数的应用
+
+```{r persp-pop,fig.width=6,fig.height=4,echo=FALSE,fig.cap="(ref:fig-persp-add)",fig.scap="(ref:fig-persp-add-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("persp-pop-tikz")
+```
+
+**grDevices** 包提供了一个相关的三维透视图转换函数 `trans3d()` ，它可以将一个空间的点的三维坐标根据透视图的特征转换为平面坐标，这样我们就可以很方便地使用一般的底层作图函数向立体图中添加图形元素。图 \@ref(fig:persp-pop) 就是这样的一个例子，读者可以参考 `persp()` 帮助文件中的示例。
+
+最后，我们介绍另一个专门的三维图形包：**scatterplot3d**
+[@Ligges03]，这个包提供了更方便且美观的作图函数 `scatterplot3d()` ；在 **lattice** 包 [@Sarkar08] 中也有三维图形函数 `cloud()` 和 `wireframe()` ；此外，**rgl** 包 [@rgl] 也不失为一个非常便利的三维数据探索工具，它基于 OpenGL 系统写成，最大的优势在于它生成的三维图形可以通过鼠标交互操作，例如拖拽旋转等，立体效果非常逼真；**rgl** 系统到后面 \@ref(sec:rgl) 小节我们再详细介绍。
+
+## 矩阵图、矩阵点、矩阵线 {#sec:matplot}
+
+### 概述 {-}
+
+矩阵图的名称来自于其参数类型，它可以针对一个矩阵将所有列以曲线的形式表达出来。与一元函数曲线图（\@ref(sec:curve) 小节）一样，它也没有什么特别之处，仅仅是提供了一个便利的封装：我们可以不必调用 `lines()` 等函数依次对矩阵的所有列画曲线。
+
+### 绘制方法 {-}
+
+R 中矩阵图的函数为 `matplot()`，矩阵点的函数为 `matpoints()`，矩阵线的函数为 `matlines()`。前者为高层作图函数（创建新图形），而后两个函数均为低层作图函数（向现有图形上添加元素）。它们的用法如下：
+
+```{r matplot-usage, results='asis'}
+usage2(usage(matplot, output = FALSE))
+usage2(usage(matpoints, output = FALSE))
+usage2(usage(matlines, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x` 和 `y`:
+: 输入的矩阵，作图的方式是用 `x` 的列为横轴方向的变量， `y` 的列为纵轴方向的变量，然后用这些列依次作散点图（ `x` 的第一列对 y 的第一列， `x` 的第二列对 `y` 的第二列，依次类推）。如果这两个参数有一个缺失，那么 x 将被 `1:nrow(y)` 代替， `y` 被非缺失的参数矩阵代替。注意两个矩阵要么有一个列数为 1，要么列数相等，否则会报错。
+
+其它设置颜色、线型等样式的参数 `type` 、 `lty` 、 `lwd` 、 `pch` 、 `col` 、 `cex` 、 `bg` 等在第\@ref(cha:elements)章中详细介绍。
+
+图 \@ref(fig:matplot)
+展示了一个正弦值矩阵的矩阵图。作图代码如下：
+
+```{r, results='asis'}
+msg_code("matplot")
+```
+
+\noindent 该例中只给出了参数 `x` 而没有 `y`，所以 `matplot()` 用矩阵 `sines` 的每一列依次对 `1:20` 画曲线。
+
+
+(ref:fig-matplot-s) 用矩阵图画出的一系列正弦曲线
+
+(ref:fig-matplot) 用矩阵图画出的一系列正弦曲线：每条曲线都有不同的点线样式和颜色
+
+```{r matplot,fig.width=4.8,fig.height=3,out.width="80%", fig.cap="(ref:fig-matplot)",fig.scap="(ref:fig-matplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("matplot")
+```
+
+如果使用 **ggplot2** 包绘制该图，下面的代码将绘制 \@ref(fig:matplot2)：
+
+```{r, results='asis'}
+msg_code("matplot2")
+```
+
+(ref:fig-matplot2) 用散点图画出的一系列正弦曲线
+
+```{r matplot2,fig.width=4.8,fig.height=3,out.width="80%", fig.cap="(ref:fig-matplot2)", dev='tikz', fig.showtext = FALSE}
+msg_graph("matplot2-tikz")
+```
+
+## 热图
+
+### 概述 {-}
+
+热图的基础就是 \@ref(sec:image) 小节中介绍的颜色图，但它在颜色图上做了一个特殊处理——聚类。具体来说，热图也是将一个矩阵中单元格数值用颜色表达，如颜色深表示数值大，但热图并非只是简单表达数值大小，而是对矩阵的行或列进行层次聚类，获得聚类的结果之后将行或列以聚类的顺序排列，并在颜色图的边界区域加上聚类的谱系图。这样一来，我们不仅可以直接观察矩阵中的数值分布状况，也可以立即知道聚类的结果，可谓一举两得。关于聚类分析的进一步介绍，参见 \@ref(subsec:cluster)
+小节。
+
+### 示例 {-}
+
+图 \@ref(fig:heatmap) 展示了 *Motor Trend* 杂志 1974 年汽车数据（表 \@ref(tab:mtcars-data)）的热图。在图 \@ref(fig:stars) 中我们曾经部分使用过这批数据并说明了变量的含义，读者可以对比该图，看用颜色和用星形哪种方式表达数值大小更易感知。
+
+(ref:fig-heatmap-s) *Motor Trend* 杂志 1974 年汽车数据的热图
+
+(ref:fig-heatmap) Motor Trend 杂志 1974 年汽车数据的热图
+
+```{r heatmap,fig.width=6,fig.height=6,fig.cap="(ref:fig-heatmap)",fig.scap="(ref:fig-heatmap-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("heatmap")
+```
+
+在汽车数据热图 \@ref(fig:heatmap) 中，我们使用了极端化调色板，用以强调极端值（参考 \@ref(sec:palette) 小节），所以很容易观察到各项较大或较小的汽车性能指标，如马力最大的是 Maserati Bora。从行的聚类来说，可以看到同一品牌的不同型号容易聚在一起，如 Mazda 的两款车，通过颜色的比较，我们又可以看出聚在一类的车中，差异在哪个或哪些指标上；从列的聚类来说，马力 `hp` 和气缸排量 `disp` 两个变量比较相似，聚为了一类，而且它们最后才和其它指标聚成一类，说明这两个指标和其它指标的差异较大。可以想象，如果做主成分分析，这两个指标也许可以提取一个成分。
+
+注意图中的数据是对列进行过标准化的。如果不做标准化，那么聚类结果就容易被数量级大的变量主导，导致产生一些误解。
+
+### 绘制方法 {-}
+
+R 中热图函数为 **stats** 包中的 `heatmap()` ，其用法如下：
+
+```{r heatmap-usage, results='asis'}
+usage2(usage(heatmap, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x`:
+: 数据矩阵，它的类型只能是矩阵，不能是数据框或其它类型。
+
+`Rowv` 和 `Colv`:
+: 分别决定了行和列如何计算层次聚类和重新排序。若设置为 `NULL`（默认），则按层次聚类的结果将行和列重新排序并相应画谱系图；若为 `NA` ，则不画谱系图。
+
+`distfun`:
+: 决定用哪个函数计算距离以便进一步计算聚类，默认为 `dist()`。
+
+`hclustfun`:
+: 决定用哪个函数计算层次聚类。
+
+`scale`:
+: 决定对行或列进行标准化，或者不进行标准化。
+
+`margins`:
+: 设定图形的下边距和右边距。
+
+`...`:
+: 传递给 `image()` ，所以我们还可以利用 `image()` 的参数来调整图形外观，比如用 `col` 设置单元格的颜色系列。
+
+下面的代码可以绘制汽车数据热图 \@ref(fig:heatmap)：
+
+```{r, results='asis'}
+msg_code("heatmap")
+```
+
+普通颜色图只是按照原始行列顺序排列色块，所以看起来可能显得比较混乱，而热图中的色块通常看起来会稍微整齐一些，颜色相近的色块往往会排在相近的地方。这样一来，如果样本数据中真的存在很明显的聚类现象，那么在热图中的直接反映就是不同颜色色块的高度集中。
+
+## 关联图 {#sec:assocplot}
+
+### 概述 {-}
+
+关联图（Cohen-Friendly Association Plot）是展示二维列联表数据的一种工具 [@Cohen80; @Friendly92]，它主要是基于列联表的独立性检验理论（Pearson $\chi^{2}$ 检验）生成的图形。
+
+我们知道，对于一个 $r\times c$ 列联表，$\chi^{2}$ 统计量的定义为如下平方和形式：
+
+\begin{equation} 
+\chi^{2}=\sum_{i=1}^{r}\sum_{j=1}^{c}d_{ij}^{2};\;\; d_{ij}=\frac{f_{ij}-e_{ij}}{\sqrt{e_{ij}}}
+(\#eq:cap)
+\end{equation} 
+
+\noindent 其中，$f_{ij}$ 为单元格中的观测频数，$e_{ij}$ 为期望频数，二者相差越大，则会导致检验统计量的值越大，说明行变量和列变量越不独立。关联图所展示内容的正是这种差异。它的设计思路是，将图形同样以 $r\times c$ 的形式布局，每一个 "单元格" 中用一个矩形表示观测频数和期望频数的信息。具体来说，矩形的高度与 Pearson 残差 $f_{ij}-e_{ij}$ 成比例，宽度与期望频数 $\sqrt{e_{ij}}$ 成比例。这样一来，矩形的面积便与 $d_{ij}$ 成比例；此外，矩形自身带有方向，朝上表示残差为正，朝下则为负，不同方向的矩形同时也以不同颜色区分开来。
+
+### 示例 {-}
+
+一组来自 Delaware 大学的 592 名学生的受访数据记录了受访者的头发和眼睛的颜色。原始数据为一个三维数组。我们关心的问题是头发颜色与眼睛颜色之间是否存在关联。于是，我们在性别维度上将数据汇总，得到眼睛颜色（棕蓝褐绿）和头发颜色（黑棕红金）人数的列联表（表 \@ref(tab:tab-haireyecolor)）。我们可以通过作假设检验（方法附后），知道零假设（独立）可否被拒绝，但是检验的结果非常单一。所以，我们对该数据绘制了图 \@ref(fig:assocplot)，细致地展示了数据的内部信息。
+
+
+```{r tab-haireyecolor}
+x = margin.table(HairEyeColor, c(1, 2))
+kable2(x, "592 名学生的头发和眼睛的颜色数据", only_head = FALSE)
+```
+
+(ref:fig-assocplot-s) 眼睛颜色与头发颜色的关联图
+
+(ref:fig-assocplot) 眼睛颜色与头发颜色的关联图
+
+```{r assocplot,fig.width=4.8,fig.height=4, out.width="75%", fig.cap="(ref:fig-assocplot)", fig.scap= "(ref:fig-assocplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("assocplot")
+```
+
+从图中我们可以清楚看到，并非所有单元格都与期望频数有很大差异，只是少数几个单元格贡献了较大的 $\chi^{2}$ 值，如金发碧眼、金发棕眼等。
+
+事实上，这批数据为调查数据，眼睛颜色和头发颜色都为受访者自己填写，我们观察到金发碧眼单元格的期望频数和实际频数差异甚大，据说这背后有一则有趣的故事：由于“金发碧眼”是大家公认的美的标准，因此有些学生在填问卷时故意偏向于填写“金发碧眼”，导致“金发碧眼”的实际频数严重偏高[^assocplot-isu]。
+
+[^assocplot-isu]: 笔者在爱荷华州立大学统计系读博士期间，每周统计图形小组有一次讨论，这则消息来自于笔者的一位导师 Heike Hofmann 教授。
+
+### 绘制方法 {-}
+
+R 中关联图的基础绘图函数为 `assocplot()`，用法如下：
+
+```{r assocplot-usage, results='asis'}
+usage2(usage(assocplot, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x`:
+: 一个列联表数据（或者矩阵）。
+
+`col`:
+: 朝上和朝下矩形的颜色。
+
+`space`:
+: 用来设置矩形之间的间距。
+
+我们用如下代码来加载和处理数据，绘制关联图：
+
+```{r, results='asis'}
+msg_code("assocplot")
+```
+
+\noindent 并做卡方检验：
+
+```{r, echo=TRUE}
+chisq.test(x)$p.value # 卡方检验 P 值
+```
+
+从返回的 $\chi^{2}$ 检验结果，我们可以拒绝零假设，眼睛的颜色与头发的颜色并不独立，二者之间存在某种关联关系。然而，这种关联关系是由于生物或遗传原因引起还是受访者有意隐瞒自己的信息，则需要我们进一步斟酌了。
+
+在 **vcd** 包 [@vcd] 中有一个类似的关联图函数 `assoc()`，功能比本节中介绍的函数要更强大，详细介绍参见 @Meyer06;
+@Zeileis07。
+
+
+## 四瓣图 {#sec:fourfoldplot}
+
+### 概述 {-}
+
+四瓣图（Fourfold Plot）是用来查看 $2\times2\times k$ 列联表中两个二分变量之间关联关系的一种图示工具，它主要是基于二维列联表的检验理论而建立起来的 [@Friendly94]。
+
+表 \@ref(tab:contingency) 是一个典型的二维列联表。通常我们想检验的是行变量与列变量是否独立。\@ref(sec:assocplot) 小节利用 $\chi^{2}$ 检验构造了关联图，这里我们从优比（Odds Ratio，OR）的角度出发对列联表进行检验。
+
+首先我们定义以下二式分别为在因素出现和不出现的情况下事件的发生率（医学上常称为风险率，即 Risk Ratio，简称 RR）：
+
+\begin{equation} 
+\frac{P_{1}}{P_{1}+P_{3}};\;\;\frac{P_{2}}{P_{2}+P_{4}}
+(\#eq:RR1)
+\end{equation} 
+
+进而我们用这二式之比得到风险率：
+
+\begin{equation} 
+\mathrm{RR}\equiv\frac{P_{1}}{P_{1}+P_{3}}/\frac{P_{2}}{P_{2}+P_{4}}=\frac{P_{1}(P_{2}+P_{4})}{P_{2}(P_{1}+P_{3})}
+(\#eq:RR)
+\end{equation} 
+
+Table: (\#tab:contingency) 二维列联表的经典形式
+
+|           |             事件              |               |
+| --------: | :---------------------------: | ------------- |
+|           |       发生　　不发生        |               |
+| 因 　  有 |  $P_{1}$　　$P_{3}$   | $P_{1}+P_{3}$ |
+| 素 　  无 |  $P_{2}$　　$P_{4}$   | $P_{2}+P_{4}$ |
+|           | $P_{1}+P_{2}$　$P_{3}+P_{4}$ |               |
+
+
+由于通常情况下事件发生的几率都比较小（尤其是医学上的疾病），即 $P_{1}$ 相对 $P_{3}$ 来说较小，$P_{2}$ 相对 $P_{4}$ 来说较小，因此 \@ref(eq:RR) 式可以近似用 \@ref(eq:OR) 式代替：
+
+\begin{equation} 
+\mathrm{OR}=\Psi\equiv\frac{P_{1}P_{4}}{P_{2}P_{3}}
+(\#eq:OR)
+\end{equation} 
+
+我们记各单元格的样本实现值分别为 $a,b,c,d$；如果事件和因素相互独立，那么因素是否发生对事件是否发生（或发生率）没有影响，因此在零假设下优比的样本实现值 $ad/bc$ 应该接近于 1。换句话说，如果优比与 1 显著不同，那么很可能行列变量不独立。
+
+四瓣图正是基于这样一个比例来完成制图的，它将优比体现在两个相邻的四分之一圆的半径之比：如果两个扇形半径差异显著，那么说明行列变量不独立，即因素对事件有影响，这便是四瓣图最基本的用法，而背后还有关于优比置信区间的计算，并且这个置信区间也在图中用两道弧线表现了出来。四瓣图最终的读法就是观察两瓣相邻扇形的置信区间弧线是否有重叠，有则说明不能拒绝零假设，反之可以拒绝。这是基于假设检验和区间估计之间的转换关系而得以成立的。
+
+计算置信区间需要用到 $\Psi$ 的方差以及正态性假定。$\Psi$ 的方差并不容易直接计算，但取对数之后就很容易了：
+
+\begin{equation}
+\mathrm{Var}(\mathrm{log}(\Psi))=\frac{1}{a}+\frac{1}{b}+\frac{1}{c}+\frac{1}{d}
+(\#eq:ORlog)
+\end{equation}
+
+其置信区间为：
+
+\begin{equation}
+\mathrm{log}(\Psi)\pm q_{1-\alpha/2}\sqrt{\mathrm{Var}(\mathrm{log}(\Psi))}
+(\#eq:ORconf)
+\end{equation}
+
+通过对 \@ref(eq:ORconf) 式取指数即可还原到 $\Psi$ 本身的置信区间。关于四瓣图的数学理论就介绍到这里，感兴趣的读者可以参阅 @Friendly94，或者直接阅读 R 语言的 `fourfoldplot()` 函数的源代码（大约 200 行）。
+
+### 示例 {-}
+
+表 \@ref(tab:tab-UCBAdmissions) 是一组加州伯克利分校（UCB）的录取数据。这批数据为一个 $2\times2\times6$ 的数组，我们可以分系别来看学生的录取是否与性别有关。为此，我们绘制了四瓣图（图 \@ref(fig:fourfoldplot)）。
+
+```{r tab-UCBAdmissions}
+kable_styling(
+    knitr::kable(ftable(UCBAdmissions), "latex", col.names = c("Status", "Gender", "Dept.", "Number"), booktabs = TRUE, caption = "加州伯克利分校（UCB）录取数据", align = "c"),
+    font_size = table_font_size
+)
+```
+
+(ref:fig-fourfoldplot-s) 加州伯克利分校录取数据四瓣图
+
+(ref:fig-fourfoldplot) 加州伯克利分校录取数据四瓣图
+
+```{r fourfoldplot,fig.width=4.8,fig.height=4,fig.cap="(ref:fig-fourfoldplot)",fig.scap="(ref:fig-fourfoldplot-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("fourfoldplot")
+```
+
+从图中反映的情况来看，只有 A 系的四瓣图显示出了置信区间弧线不相交的情况，说明 A 系学生的录取与性别不独立，而其它系都不能拒绝零假设"录取与性别无关"。
+
+### 绘制方法 {-}
+
+R 中绘制四瓣图的基础函数是 `fourfoldplot()`，用法如下：
+
+```{r fourfoldplot-usage, results='asis'}
+usage2(usage(fourfoldplot, output = FALSE))
+```
+
+\noindent 参数含义：
+
+`x`:
+: 一个 $2\times2\times k$ 的数组。当 $k=1$ 时，它也可以直接取一个 $2\times2$ 的矩阵。
+
+`color`:
+: 设定四分之一圆的填充颜色，处于同一对角线上的扇形颜色相同，颜色填充的顺序也反映出优比与 1 的大小。
+
+`onf.level`:
+: 置信水平。
+
+`std`:
+: 列联表的标准化方法，决定了标准化时分母所除的数。
+
+当 $k\geq1$ 时，该函数会依次生成 $k$ 幅四瓣图。
+
+举例来说，图 \@ref(fig:fourfoldplot) 的数据加载和绘制代码如下：
+
+```{r, results='asis'}
+msg_code("fourfoldplot")
+```
+
+现在我们不妨通过一些简单的 R 语言计算来证实两件事情。
+
+首先是扇形颜色的填充与优比的关系，计算优比的代码如下：
+
+```{r UCB-OR, echo=TRUE}
+(x = apply(UCBAdmissions, 3, 
+           function(x) (x[1, 1] * x[2, 2]) / (x[1, 2] * x[2, 1])))
+```
+
+C 系和 E 系的优比大于 1。观察图 \@ref(fig:fourfoldplot) 可知， `color` 参数的第一个颜色值填充第一、三象限的扇形，而优比小于 1 时，第一个颜色值填充第二、四象限。
+
+其次，我们完全可以将优比的置信区间分别算出来，看它们是否包含数值 1：
+
+```{r UCB-CI, echo=TRUE}
+y = qnorm(0.975) * sqrt(apply(UCBAdmissions, 3, 
+                               function(x) {sum(1 / x)}))
+conf = exp(cbind(log(x) - y, log(x) + y))
+colnames(conf) = c("2.5%", "97.5%")
+conf
+```
+
+显然，这些置信区间中只有 A 系的不包含 1 在内，因此对于该系来说可以拒绝零假设。这与图形得到的结论完全相符。
+
+这里我们提醒读者注意上面的 R 代码与数学公式的对应关系。很多时候，根据数学公式写 R 代码是非常简单的工作。
+
+最后，我们可以看看卡方检验的 P 值，这些 P 值对应的结论和上面的图形和优比的结论都相同：
+
+```{r UCB-chisq, echo=TRUE}
+# 对每个系的录取数据进行卡方检验分别得到 P 值
+round(apply(UCBAdmissions, 3, function(x) chisq.test(x)$p.value), 3)
+```
+
+
+
+## 思考与练习
+
+1.   图 \@ref(fig:contour-pop) 显示的等高线信息也可以用三维透视图表示，如图 \@ref(fig:fig-contour-persp) 所示。自己动手绘制（提示：R 语言的 `persp()` 函数）。比较这两种表示方法，各自有什么优势和不足？
+
+(ref:fig-contour-persp-s) 与等高图对应的三维透视图
+
+(ref:fig-contour-persp) 与等高图对应的三维透视图：从右至左依次有三个山峰，尤其是中部山峰最为突出，对照后面 \@ref(sec:symbols) 小节中图 \@ref(fig:symbols-pop) 可知，这三个山峰分别代表东中西的省份
+
+```{r fig-contour-persp, fig.height=6,fig.width=7,out.width="80%", fig.cap="(ref:fig-contour-persp)",fig.scap="(ref:fig-contour-persp-s)"}
+msg_graph("fig-contour-persp")
+```
+
+2.   基于第 \@ref(sec:matplot) 小节介绍的矩阵图，编写一个画平行坐标图的函数，参数主要包括一个数据框（可以选择性地包括其它修饰性参数，例如数据标准化的方法等），函数的主体部分只有一行代码，形式如下：
+
+```{r parcoords-fun-demo,eval=FALSE, echo=TRUE}
+parcoords = function(x, ...) {
+  # 如何处理 x？
+  matplot(..., type = "l", lty = 1, pch = NA)
+}
+# 测试代码
+parcoords(iris)
+```
+
+提示：可以考虑 `col()` 函数，可能需要转置 `t()` ；想清楚我们是用怎样的两个矩阵去画线。
+
+
+3.  本章介绍的关联图，用你熟悉的绘图软件该如何绘制？ 我们并没有给出关联图的 **ggplot2** 作法，是因为它并没有现成的函数来绘制。不过，一个变通的方法是使用 `geom_tile()` 函数绘制颜色图来展示这种关联信息，如图 \@ref(fig:assocplot2) 所示。将它与图 \@ref(fig:assocplot) 作比较。两图有哪些异同？各有哪些优势？
+
+(ref:fig-assocplot2-s) **ggplot2** 绘制的眼睛颜色与头发颜色的颜色图
+
+(ref:fig-assocplot2) **ggplot2** 绘制的眼睛颜色与头发颜色的颜色图：网格颜色表示 Pearson 残差的大小
+
+```{r assocplot2, fig.width=4.8,fig.height=4, out.width="75%", fig.cap="(ref:fig-assocplot2)", fig.scap= "(ref:fig-assocplot2-s)", dev='tikz', fig.showtext = FALSE}
+msg_graph("assocplot2")
+```
